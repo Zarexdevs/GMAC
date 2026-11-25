@@ -15,15 +15,16 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 | --- | --- |
 | Boot, first-run screens, intro video with sound | works, 15 to 30 fps |
 | Rockstar logo, intro art, legal and settings screens | works, rendered correctly |
-| Story-mode load ("loading screen" art) | works, about 6 to 9 minutes on 16 GB |
+| Story-mode load ("loading screen" art) | works, 15 to 30 fps, about 6 to 9 minutes on 16 GB |
 | Entering the game world | the world starts (its audio plays), the picture does not show yet |
 | Gameplay | not yet |
 
 ## Target
 
 1. The opening title card and cutscene on screen.
-2. The 3D world drawing, then above 1 fps.
-3. A setup a Mac owner can run in a few commands.
+2. The 3D world drawing at **2 to 4 fps**.
+3. In the long run, **50 fps** in the world.
+4. A setup a Mac owner can run in a few commands.
 
 ## How it works
 
