@@ -7,7 +7,7 @@ copy of the game you own, through Wine, Apple's D3DMetal and Rosetta 2.
 > **GMAC is not playable yet.** No game files are included here, now or ever. You need your own copy of the game.
 > No code is published yet either; this page tracks progress and the plan.
 
-## Where it stands (25 November 2026)
+## Where it stands (26 November 2026)
 
 Tested on a **MacBook with an M5 and 16 GB of memory**.
 
@@ -15,22 +15,27 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 | --- | --- |
 | Boot, first-run screens, intro video with sound | works, 45 to 60 fps |
 | Rockstar logo, intro art, legal and settings screens | works, rendered correctly |
-| Story-mode load ("loading screen" art) | works, 25 to 35 fps, about 6 to 9 minutes on 16 GB |
-| Story intro (`FBK_STRY000_INTRO`) | streams in, and its dialogue plays; the picture stalls as memory runs out |
+| Story-mode load ("loading screen" art) | works, a steady 60 fps (Series S mode), 25 to 35 fps as a Series X |
+| Story intro (`FBK_STRY000_INTRO`) | streams in, and its dialogue plays |
+| Story mode | **reached:** dialogue plays and the minimap shows, but the world is black (its mesh draws are skipped for now), under 1 fps |
 | Gameplay | not yet |
 
 ### Latest findings
 
-- **The crash at the end of the load was the game's own GPU watchdog.** When GPU work runs long, a watchdog thread
-  decodes the message "GPU Loc Sig" and stops the game on purpose. GMAC now patches that trap out, so a slow GPU no
-  longer ends the run.
-- **Memory is the wall on 16 GB.** As an Xbox Series X the game is given 13.5 GB, and by the story intro the GPU holds
-  about 13 GB, so macOS swaps, copies take seconds and the dialogue cuts out. Series S mode (7.6 GB) was tried once; it stopped drawing early and needs another run.
-- **The copies are large because of Rosetta.** Tracking which pages the game writes (to copy only those) hangs
-  Rosetta on 256-bit AVX stores that cross into a protected page, so every submission copies whole buffers (up to
-  2.2 GB). Making that tracking safe is the next fix.
-- **Loading screens at 60 fps:** an option paces the console's 30 fps frame clock twice as fast; the first-run
-  screens hold 57 to 63 fps.
+- **Story mode reached (26 November).** With the fixes below the game gets past the load into story mode: the
+  dialogue plays and the minimap HUD appears. The world is still black, because its mesh-shader draws are skipped
+  to get past a GPU hang, and it runs below 1 fps.
+- **Rosetta-safe write tracking.** Tracking which memory pages the game writes (so only those are copied to the
+  GPU) used to freeze Rosetta on 256-bit AVX stores that cross into a protected page. GMAC now rewrites 96,833 of
+  the game's AVX stores as plain 8-byte moves when it loads the game, found by a disassembler ahead of time. With
+  tracking on, memory copies fell from up to 2.2 GB per submission to under 1 MB per frame on the loading screens.
+- **The game's own GPU watchdog** ("GPU Loc Sig") stopped the game on purpose when GPU work ran long. It is
+  patched out.
+- **Series S mode** gives the game about 7.6 GB instead of 13.5 GB, which a 16 GB Mac can hold through the load.
+- **60 fps loading screens:** an option paces the console's 30 fps frame clock twice as fast.
+- **Next:** D3DMetal's mesh-shader work never finishes in the world (both hung GPU lists were mostly mesh
+  shaders), so the world does not draw yet; free memory still falls to about 5% in the world; and Apple's Metal
+  shader compiler crashes on some of the game's mesh shaders.
 
 ## Target
 
@@ -65,9 +70,11 @@ and the Mac work done there carries over. GMAC's changes will be published under
 - **Loading faster:** all 25,908 shaders compiled natively ahead of time instead of under Rosetta during the load,
   pipelines built ahead of time, buffered file streaming, and the game's AMD-only spin-wait instructions patched so they
   no longer fault through Rosetta's exception thread.
-- **Getting through the load:** the game's GPU watchdog trap patched out, and an option for 60 fps loading screens.
+- **Getting through the load:** the game's GPU watchdog trap patched out, its 256-bit AVX stores made safe for
+  Rosetta so write tracking can run, Series S mode for memory, and 60 fps loading screens.
 - **Staying stable:** giant and slow Metal shader compiles skipped instead of stalling the GPU, a clean quit that
-  releases the GPU's memory (no restart needed between runs), and a scan that cannot race the game's memory unmaps.
+  releases the GPU's memory (no restart needed between runs), a scan that cannot race the game's memory unmaps, and
+  a log that names the shaders of a GPU submission that hangs.
 - **Tooling:** a launcher with the memory guard, fps and load progress in the window title, and a fail-closed mute.
 
 ## Legal
