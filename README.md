@@ -13,9 +13,9 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 
 | Stage | Status |
 | --- | --- |
-| Boot, first-run screens, intro video with sound | works, 30 to 60 fps |
+| Boot, first-run screens, intro video with sound | works, 45 to 60 fps |
 | Rockstar logo, intro art, legal and settings screens | works, rendered correctly |
-| Story-mode load ("loading screen" art) | works, 15 to 35 fps, about 6 to 9 minutes on 16 GB |
+| Story-mode load ("loading screen" art) | works, 25 to 35 fps, about 6 to 9 minutes on 16 GB |
 | Story intro (`FBK_STRY000_INTRO`) | streams in, and its dialogue plays; the picture stalls as memory runs out |
 | Gameplay | not yet |
 
