@@ -7,7 +7,7 @@ copy of the game you own, through Wine, Apple's D3DMetal and Rosetta 2.
 > **GMAC is not playable yet.** No game files are included here, now or ever. You need your own copy of the game.
 > No code is published yet either; this page tracks progress and the plan.
 
-## Where it stands (26 November 2026)
+## Where it stands (26 November 2026, evening)
 
 Tested on a **MacBook with an M5 and 16 GB of memory**.
 
@@ -17,11 +17,23 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 | Rockstar logo, intro art, legal and settings screens | works, rendered correctly |
 | Story-mode load ("loading screen" art) | works, a steady 60 fps (Series S mode), 25 to 35 fps as a Series X |
 | Story intro (`FBK_STRY000_INTRO`) | streams in, and its dialogue plays |
-| Story mode | **the 3D world draws:** the city, its lighting and characters on screen, dialogue and HUD, at 1 to 4 fps; stays up 6+ minutes |
-| Picture quality | ghosting and silhouetted characters: about 200 draws a frame are still dropped (mesh shaders Metal cannot build yet) |
+| Story mode | **full graphics running:** the city with its lighting, shadows, sky, characters, dialogue and HUD; loads into the world in about 2 minutes |
+| Picture quality | **graphics fully running:** 25,692 of the game's 25,909 shaders now translate (lighting, cascade shadows, shadow masks, local exposure, indirect light, culling); a handful of effects still missing |
+| Frame rate | about 1 fps in the world, 30 to 60 fps on loading screens; next up |
 | Gameplay | not yet |
 
 ### Latest findings
+
+- **Graphics fully running (26 November, evening).** The washed-out, silhouetted picture came from about 240
+  shaders being dropped: the console runs GPU threads in groups of 64, the Mac in groups of 32, and these shaders
+  pass data between the two halves where the halves cannot meet. GMAC now runs each half on its own there, which
+  is right for nearly all of this code. Lighting, cascade shadows, shadow masks, local exposure, indirect light and
+  prop and tree culling all run now: 25,692 of 25,909 shaders translate.
+- **Loading fixed.** The world load crawled for 10+ minutes with zero-copy memory on: our Wine lacked two patches
+  (Metal's memory looked free to Wine, and every address search crawled through it). With them the world loads in
+  about 2 minutes, and copies of the game's memory per frame dropped by gigabytes.
+- **CPU and GPU now overlap.** A submission runs on the GPU while the next one is prepared: world frames 25 to 40 %
+  faster.
 
 - **The world draws (26 November).** The black main view was the wrong console display plane: on Series S the
   finished scene is on plane 0 (1080p) and the HUD on plane 1 (4K). GMAC now shows plane 0 with plane 1 blended over
@@ -36,8 +48,8 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 - **Rosetta-safe write tracking.** GMAC rewrites about 98,000 of the game's 256-bit AVX stores as 8-byte moves when
   it loads the game, so tracking which pages the game writes no longer freezes Rosetta. A faster copy path replaces
   Wine's kernel copy for game memory.
-- **Next:** fix the dropped mesh-shader draws (the ghosting), then let CPU and GPU work overlap: today VIctory waits
-  for the GPU after each of about 28 submissions a frame.
+- **Next:** frame rate (descriptor syncing and copies of game memory each frame, GPU time per submission), and the
+  last mesh shaders over Metal's 32 KB output limit.
 
 ## Target
 
