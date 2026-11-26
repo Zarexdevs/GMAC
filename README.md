@@ -17,25 +17,27 @@ Tested on a **MacBook with an M5 and 16 GB of memory**.
 | Rockstar logo, intro art, legal and settings screens | works, rendered correctly |
 | Story-mode load ("loading screen" art) | works, a steady 60 fps (Series S mode), 25 to 35 fps as a Series X |
 | Story intro (`FBK_STRY000_INTRO`) | streams in, and its dialogue plays |
-| Story mode | **reached:** dialogue plays and the minimap shows, but the world is black (its mesh draws are skipped for now), under 1 fps |
+| Story mode | **the 3D world draws:** the city, its lighting and characters on screen, dialogue and HUD, at 1 to 4 fps; stays up 6+ minutes |
+| Picture quality | ghosting and silhouetted characters: about 200 draws a frame are still dropped (mesh shaders Metal cannot build yet) |
 | Gameplay | not yet |
 
 ### Latest findings
 
-- **Story mode reached (26 November).** With the fixes below the game gets past the load into story mode: the
-  dialogue plays and the minimap HUD appears. The world is still black, because its mesh-shader draws are skipped
-  to get past a GPU hang, and it runs below 1 fps.
-- **Rosetta-safe write tracking.** Tracking which memory pages the game writes (so only those are copied to the
-  GPU) used to freeze Rosetta on 256-bit AVX stores that cross into a protected page. GMAC now rewrites 96,833 of
-  the game's AVX stores as plain 8-byte moves when it loads the game, found by a disassembler ahead of time. With
-  tracking on, memory copies fell from up to 2.2 GB per submission to under 1 MB per frame on the loading screens.
-- **The game's own GPU watchdog** ("GPU Loc Sig") stopped the game on purpose when GPU work ran long. It is
-  patched out.
-- **Series S mode** gives the game about 7.6 GB instead of 13.5 GB, which a 16 GB Mac can hold through the load.
-- **60 fps loading screens:** an option paces the console's 30 fps frame clock twice as fast.
-- **Next:** D3DMetal's mesh-shader work never finishes in the world (both hung GPU lists were mostly mesh
-  shaders), so the world does not draw yet; free memory still falls to about 5% in the world; and Apple's Metal
-  shader compiler crashes on some of the game's mesh shaders.
+- **The world draws (26 November).** The black main view was the wrong console display plane: on Series S the
+  finished scene is on plane 0 (1080p) and the HUD on plane 1 (4K). GMAC now shows plane 0 with plane 1 blended over
+  it, so loading screens, the HUD and the city all show.
+- **No more GPU hangs.** Mesh shaders Metal cannot build (over its 32 KB mesh-output limit, or ones Apple's shader
+  compiler crashes on) are refused and learned automatically, instead of hanging the GPU.
+- **Memory was the frame rate.** In the world the game used only about 1.6 of 10 CPU cores: the Mac was swapping
+  to disk, because the GPU held copies of nearly all the game's memory plus several GB of waste. Overlapping copies
+  are now merged (they held 3.6 GB for 2.7 GB of memory), copies nothing uses are freed, copy windows are 256 KB
+  instead of 4 MB, and idle textures are given up after 30 s. GPU memory now holds at about 10 GB instead of
+  hitting 13.3 GB within three minutes, swapping nearly stopped, and the world went from 0.3 to 1 fps to 1 to 4 fps.
+- **Rosetta-safe write tracking.** GMAC rewrites about 98,000 of the game's 256-bit AVX stores as 8-byte moves when
+  it loads the game, so tracking which pages the game writes no longer freezes Rosetta. A faster copy path replaces
+  Wine's kernel copy for game memory.
+- **Next:** fix the dropped mesh-shader draws (the ghosting), then let CPU and GPU work overlap: today VIctory waits
+  for the GPU after each of about 28 submissions a frame.
 
 ## Target
 
@@ -65,13 +67,15 @@ and the Mac work done there carries over. GMAC's changes will be published under
 - **Rendering on Metal:** pixel-shader inputs numbered as the console numbers them (the intro was one flat colour
   before), descriptor strides for D3DMetal, CPU-built rectangle lists, buffer views at GPU-only addresses, and shader
   hashes D3DMetal can cache by.
-- **Fitting 16 GB:** smaller GPU copies of game memory, 1080p and lower render targets, half-size read-only textures,
-  and a memory guard that stops the game before the Mac runs out.
+- **Fitting 16 GB:** merged, right-sized GPU copies of game memory that are freed when unused, idle textures given
+  up, 1080p and lower render targets, half-size read-only textures, and a memory guard that stops the game before
+  the Mac runs out.
 - **Loading faster:** all 25,908 shaders compiled natively ahead of time instead of under Rosetta during the load,
   pipelines built ahead of time, buffered file streaming, and the game's AMD-only spin-wait instructions patched so they
   no longer fault through Rosetta's exception thread.
 - **Getting through the load:** the game's GPU watchdog trap patched out, its 256-bit AVX stores made safe for
-  Rosetta so write tracking can run, Series S mode for memory, and 60 fps loading screens.
+  Rosetta so write tracking can run, Series S mode for memory, the game's own upscaler instead of FSR 4, the right
+  display plane, and 60 fps loading screens.
 - **Staying stable:** giant and slow Metal shader compiles skipped instead of stalling the GPU, a clean quit that
   releases the GPU's memory (no restart needed between runs), a scan that cannot race the game's memory unmaps, and
   a log that names the shaders of a GPU submission that hangs.
